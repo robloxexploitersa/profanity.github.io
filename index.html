@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My IP</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #040912;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+    animation: grid 20s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes grid { to { background-position: 32px 32px; } }
+
+  .wrap {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .label {
+    font-size: 0.65rem;
+    letter-spacing: 0.4em;
+    color: #2e5070;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .ip {
+    font-size: clamp(2rem, 8vw, 4rem);
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: #00c8ff;
+    text-shadow: 0 0 40px rgba(0,200,255,0.6), 0 0 80px rgba(0,200,255,0.2);
+    min-height: 1.2em;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 4px; height: 0.8em;
+    background: #00c8ff;
+    vertical-align: middle;
+    margin-left: 6px;
+    animation: blink 0.8s step-end infinite;
+    border-radius: 2px;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,200,255,0.12);
+    animation: spin 12s linear infinite;
+    pointer-events: none;
+  }
+
+  .ring::after {
+    content: '';
+    position: absolute;
+    top: -4px; left: 50%;
+    width: 8px; height: 8px;
+    background: #00c8ff;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #00c8ff;
+    transform: translateX(-50%);
+  }
+
+  .ring2 {
+    width: 380px; height: 380px;
+    border-color: rgba(0,200,255,0.06);
+    animation: spin 20s linear infinite reverse;
+  }
+
+  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+  .copy {
+    margin-top: 28px;
+    padding: 8px 24px;
+    border: 1px solid #0e2440;
+    border-radius: 3px;
+    background: transparent;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: #2e5070;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: none;
+  }
+  .copy:hover { border-color: #00c8ff; color: #00c8ff; box-shadow: 0 0 16px rgba(0,200,255,0.3); }
+</style>
+</head>
+<body>
+<div class="ring"></div>
+<div class="ring ring2"></div>
+
+<div class="wrap">
+  <p class="label">Your Public IP Address</p>
+  <div class="ip" id="ip"><span class="cursor"></span></div>
+  <button class="copy" id="copyBtn" onclick="copyIP()">COPY</button>
+</div>
+
+<script>
+async function getIP() {
+  // Try 3 different APIs as fallback
+  const apis = [
+    () => fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>d.ip),
+    () => fetch('https://ip-api.com/json/').then(r=>r.json()).then(d=>d.query),
+    () => fetch('https://ipwho.is/').then(r=>r.json()).then(d=>d.ip),
+  ];
+
+  for (const api of apis) {
+    try {
+      const ip = await api();
+      if (ip) return ip;
+    } catch(e) {}
+  }
+  return null;
+}
+
+async function typeText(el, text) {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    out += text[i];
+    el.innerHTML = out + '<span class="cursor"></span>';
+    await new Promise(r => setTimeout(r, 60));
+  }
+  el.textContent = text;
+}
+
+(async () => {
+  const ip = await getIP();
+  const el = document.getElementById('ip');
+
+  if (ip) {
+    await typeText(el, ip);
+    document.getElementById('copyBtn').style.display = 'inline-block';
+  } else {
+    el.innerHTML = '<span style="color:#ff3e6c;font-size:1.2rem">UNAVAILABLE</span>';
+  }
+})();
+
+async function copyIP() {
+  const text = document.getElementById('ip').textContent;
+  try { await navigator.clipboard.writeText(text); } catch(e) {}
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = 'COPIED ✓';
+  setTimeout(() => btn.textContent = 'COPY', 1800);
+}
+</script>
+</body>
+</html>
